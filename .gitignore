@@ -1,0 +1,31 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ── Secrets / credentials ───────────────────────────────
+# API keys, tokens, anything sensitive lives in .env — NEVER commit it
+.env
+*.key
+secrets.*
+
+# ── Captured scan data (OPSEC — real BSSIDs / neighbor networks) ──
+# Any real-world capture output stays local. Never reaches GitHub.
+captures/
+logs/
+*.scan
+*.pcap
+*.log
+
+# ── Editor / OS noise ───────────────────────────────────
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
