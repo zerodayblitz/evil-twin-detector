@@ -7,8 +7,18 @@ Reads nearby access points and their raw beacon data through the Windows Native 
 import time
 import ctypes
 from ctypes import wintypes
+from dataclasses import dataclass
 
 wlanapi = ctypes.WinDLL("wlanapi.dll")
+
+@dataclass
+class AccessPoint:
+    ssid: str
+    bssid: str
+    rssi: int
+    channel_khz: int
+    tsf: int
+    ie_bytes: bytes
 
 WlanOpenHandle = wlanapi.WlanOpenHandle
 WlanOpenHandle.argtypes = [
@@ -153,7 +163,7 @@ def scan(interface_guid=None):
 
     entries = ctypes.cast(bss_list.wlanBssEntries, ctypes.POINTER(WLAN_BSS_ENTRY * count)).contents
 
-    print(f"Found {count} access points: \n")
+    access_points = []
 
     for i in range(count):
         entry = entries[i]
@@ -163,20 +173,31 @@ def scan(interface_guid=None):
 
         bssid = ":".join(f"{b:02x}" for b in entry.dot11Bssid)
         
-        rssi = entry.lRssi
-        channel_khz = entry.ulChCenterFrequency
-        ie_size = entry.ulIeSize
+        ie_address = ctypes.addressof(entry) + entry.ulIeOffset
+        ie_bytes = ctypes.string_at(ie_address, entry.ulIeSize)
 
-        print(f"SSID:    {ssid}")
-        print(f"BSSID:   {bssid}")
-        print(f"RSSI:    {rssi} dBm")
-        print(f"Channel: {channel_khz} kHz")
-        print(f"IE size: {ie_size} bytes")
-        print("-" * 40)
+        access_points.append(AccessPoint(
+            ssid=ssid,
+            bssid=bssid,
+            rssi=entry.lRssi,
+            channel_khz=entry.ulChCenterFrequency,
+            tsf=entry.ullTimestamp,
+            ie_bytes=ie_bytes
+        ))
 
     wlanapi.WlanFreeMemory(bss_list_ptr)
     wlanapi.WlanFreeMemory(interface_list)
     WlanCloseHandle(client_handle, None)
 
+    return access_points
+
 if __name__ == "__main__":
-    scan()
+    results = scan()
+    print(f"Found {len(results)} accesspoints:\n")
+    for ap in results:
+        print(f"SSID:    {ap.ssid}")
+        print(f"BSSID:   {ap.bssid}")
+        print(f"RSSI:    {ap.rssi} dBm")
+        print(f"Channel: {ap.channel_khz} kHz")
+        print(f"IE size: {len(ap.ie_bytes)} bytes")
+        print("-" * 40)
