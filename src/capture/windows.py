@@ -151,10 +151,12 @@ def scan(interface_guid=None):
     bss_list = bss_list_ptr.contents
     count = bss_list.dwNumberOfItems
 
+    entries = ctypes.cast(bss_list.wlanBssEntries, ctypes.POINTER(WLAN_BSS_ENTRY * count)).contents
+
     print(f"Found {count} access points: \n")
 
     for i in range(count):
-        entry = bss_list.wlanBssEntries[i]
+        entry = entries[i]
 
         ssid_bytes = bytes(entry.dot11Ssid.ucSSID[:entry.dot11Ssid.uSSIDLength])
         ssid = ssid_bytes.decode("utf-8", errors="replace")
