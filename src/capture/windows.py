@@ -82,7 +82,7 @@ class WLAN_BSS_LIST(ctypes.Structure):
     _fields_ = [
         ("dwTotalSize", wintypes.DWORD),       # entire list of APs in bytes
         ("dwNumberofItems", wintypes.DWORD),   # how many APs Windows found
-        ("wlanBssEntries", WLAN_BSS_ENTRY * 1) # array of each As beacon data
+        ("wlanBssEntries", WLAN_BSS_ENTRY * 1) # array of each APs beacon data
     ]
 
 WlanGetNetworkBssList = wlanapi.WlanGetNetworkBssList
@@ -111,7 +111,53 @@ def scan(interface_guid=None):
 
     result = WlanOpenHandle(2, None, ctypes.byref(negotiated_version), ctypes.byref(client_handle))
     if result != 0:
-        raise OSError(f"WlanOpenHandle failled with error" {result})
+        raise OSError(f"WlanOpenHandle failled with error {result}")
+    
+    interface_list = ctypes.POINTER(WLAN_INTERFACE_INFO_LIST)()                     # holding the address of the set of interfaces
 
+    result = WlanEnumInterfaces(client_handle, None, ctypes.byref(interface_list))
+    if result != 0:
+        raise OSError(f"WlanEnumInterfaces failed with error {result}")
 
+    info_list = interface_lists.contents
+    if info_list.dwNumberOfItems == 0:
+        raise OSError("No Wi-Fi interfaces found")
+
+    chosen_guid = info_list.InterfaceInfo[0].InterfaceGuid
+
+    bss_list_ptr = ctypes.POINTER(WLAN_BSS_LIST)()                         # holding the address of the the AP data for Windows to fill
+
+    result = WlanGetNetworkBssList(client_handle, ctypes.byref(chosen_guid), None, 0, False, None, ctypes.byred(bss_list_ptr))
+    if result != 0:
+        raise OSError(f"WlanGetNetworkBssList failed with error {result}")
+
+    bss_list = bss_list.ptr.contents
+    count = bss_list.dwNumberOfItems
+
+    print(f"Found {count} access proints: \n")
+
+    for i in range(count):
+        entry = bss_list.wlanBssEntries[i]
+
+        ssid_bytes = bytes(entry.dot11Ssid.ucSSID[:entry.dot11Ssid.uSSIDLength])
+        ssid = ssid_bytes.decode("utf-8", errors="replace")
+
+        bssid = ":".join(f"{b:02x}" for b in entry.dot11Bssid)
         
+        rssid = entry.lRssi
+        channel_khz = entry.ulChCenterFrequency
+        ie_size = entry.ulIeSize
+
+        print(f"SSID:    {ssid}")
+        print(f"BSSID:   {bssid}")
+        print(f"RSSI:    {rssi} dBm")
+        print(f"Channel: {channel_khz} kHz")
+        print(f"IE size: {ie_size} bytes")
+        print("-" * 40)
+
+        wlanapi.WlanFreeMemory(bss_list_ptr)
+        wlanapi.WlanFreeMemory(interface_list)
+        WlanCloseHandle(client_handle, None)
+
+if __name__ == "__main__"
+    scan
