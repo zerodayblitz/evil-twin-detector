@@ -101,7 +101,7 @@ WlanGetNetworkBssList.restype = wintypes.DWORD
 WlanScan = wlanapi.WlanScan                     # Active Scanning for APs
 WlanScan.argtypes = [
     wintypes.HANDLE,
-    ctypes.POINTER(GUID)
+    ctypes.POINTER(GUID),
     ctypes.c_void_p,
     ctypes.c_void_p
 ]
@@ -139,7 +139,7 @@ def scan(interface_guid=None):
     if result != 0:
         raise OSError(f"WlanScan failed with error {result}")
 
-        tim.sleep(4)
+    time.sleep(4)
 
     bss_list_ptr = ctypes.POINTER(WLAN_BSS_LIST)()                           # holding the address of the the AP data for Windows to fill
 
