@@ -103,6 +103,7 @@ WlanScan.argtypes = [
     wintypes.HANDLE,
     ctypes.POINTER(GUID),
     ctypes.c_void_p,
+    ctypes.c_void_p,
     ctypes.c_void_p
 ]
 WlanScan.restype = wintypes.DWORD
@@ -135,7 +136,7 @@ def scan(interface_guid=None):
 
     chosen_guid = info_list.InterfaceInfo[0].InterfaceGuid
 
-    result = WlanScan(client_handle, ctypes.byref(chosen_guid), None, None) # Starts active AP scan on chosen adapter
+    result = WlanScan(client_handle, ctypes.byref(chosen_guid), None, None, None) # Starts active AP scan on chosen adapter
     if result != 0:
         raise OSError(f"WlanScan failed with error {result}")
 
