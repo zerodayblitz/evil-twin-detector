@@ -1,7 +1,7 @@
 """
 Windows beacon capture for the evil-twin-detector
 
-Reads nearby access points and their raw beacond data through the Windows Native API (wlanapi.dll), called via ctypes
+Reads nearby access points and their raw beacon data through the Windows Native API (wlanapi.dll), called via ctypes
 """
 
 import ctypes
@@ -23,7 +23,7 @@ class GUID(ctypes.Structure): # GUID structure
         ("Data1", wintypes.DWORD),
         ("Data2", wintypes.WORD),
         ("Data3", wintypes.WORD),
-        ("Data4", ctypes.c_ubtye * 8)
+        ("Data4", ctypes.c_ubyte * 8)
     ]
 
 class WLAN_INTERFACE_INFO(ctypes.Structure): # single Wi-Fi Adapter Info
@@ -47,10 +47,10 @@ WlanEnumInterfaces.argtypes = [                              #using the open ses
     ctypes.POINTER(ctypes.POINTER(WLAN_INTERFACE_INFO_LIST)) # Adapter count is abiratry, so rather than passing a pointer witha fixed size, allow windows to
 ]
 
-class DOT11_SSID(cytpes.Structure):
+class DOT11_SSID(ctypes.Structure):
     _fields_ = [
         ("uSSIDLength", wintypes.ULONG), # how many bites of the SSID is used
-        ("ucSSID", cytpes.c_ubtye * 32)  # actually SSID bytes
+        ("ucSSID", ctypes.c_ubyte * 32)  # actually SSID bytes
     ]
 
 class WLAN_RATE_SET(ctypes.Structure): # unused; holds AP's supported data rates
@@ -61,17 +61,17 @@ class WLAN_RATE_SET(ctypes.Structure): # unused; holds AP's supported data rates
 class WLAN_BSS_ENTRY(ctypes.Structure): # An APs complete Beacon data
     _fields_ = [
         ("dot11Ssid", DOT11_SSID),                   # network name
-        ("uPhyId", wintypes),                       
-        ("dot11Bssid", ctypes.c_ubtye * 6),          # BSSID
-        ("dot11BssType", wintypes.DWORD)
+        ("uPhyId", wintypes.DWORD),                       
+        ("dot11Bssid", ctypes.c_ubyte * 6),          # BSSID
+        ("dot11BssType", wintypes.DWORD),
         ("dot11BssPhyType", wintypes.DWORD),
-        ("1Rssi", wintypes.LONG),                    # signal strength 
+        ("lRssi", wintypes.LONG),                    # signal strength 
         ("uLinkQuality", wintypes.ULONG),
         ("bInRegDomain", wintypes.BOOL),
         ("usBeaconPeriod", wintypes.USHORT),
         ("ullTimestamp", ctypes.c_ulonglong),        # TSF
         ("ullHostTimestamp", ctypes.c_ulonglong),       
-        ("usCapabilityInformation", wintypes.ULONG), # Capability flags
+        ("usCapabilityInformation", wintypes.USHORT), # Capability flags
         ("ulChCenterFrequency", wintypes.ULONG),     # channel/frequency
         ("wlanRateSet", WLAN_RATE_SET),
         ("ulIeOffset", wintypes.ULONG),              # where IE blob starts
@@ -81,7 +81,7 @@ class WLAN_BSS_ENTRY(ctypes.Structure): # An APs complete Beacon data
 class WLAN_BSS_LIST(ctypes.Structure):
     _fields_ = [
         ("dwTotalSize", wintypes.DWORD),       # entire list of APs in bytes
-        ("dwNumberofItems", wintypes.DWORD),   # how many APs Windows found
+        ("dwNumberOfItems", wintypes.DWORD),   # how many APs Windows found
         ("wlanBssEntries", WLAN_BSS_ENTRY * 1) # array of each APs beacon data
     ]
 
@@ -98,7 +98,7 @@ WlanGetNetworkBssList.argtypes = [
 WlanGetNetworkBssList.restype = wintypes.DWORD
 
 WlanCloseHandle = wlanapi.WlanCloseHandle
-WlanClose.argtypes = [
+WlanCloseHandle.argtypes = [
     wintypes.HANDLE,
     ctypes.c_void_p
 ]
@@ -111,7 +111,7 @@ def scan(interface_guid=None):
 
     result = WlanOpenHandle(2, None, ctypes.byref(negotiated_version), ctypes.byref(client_handle))
     if result != 0:
-        raise OSError(f"WlanOpenHandle failled with error {result}")
+        raise OSError(f"WlanOpenHandle failed with error {result}")
     
     interface_list = ctypes.POINTER(WLAN_INTERFACE_INFO_LIST)()                     # holding the address of the set of interfaces
 
@@ -119,7 +119,7 @@ def scan(interface_guid=None):
     if result != 0:
         raise OSError(f"WlanEnumInterfaces failed with error {result}")
 
-    info_list = interface_lists.contents
+    info_list = interface_list.contents
     if info_list.dwNumberOfItems == 0:
         raise OSError("No Wi-Fi interfaces found")
 
@@ -127,14 +127,14 @@ def scan(interface_guid=None):
 
     bss_list_ptr = ctypes.POINTER(WLAN_BSS_LIST)()                         # holding the address of the the AP data for Windows to fill
 
-    result = WlanGetNetworkBssList(client_handle, ctypes.byref(chosen_guid), None, 0, False, None, ctypes.byred(bss_list_ptr))
+    result = WlanGetNetworkBssList(client_handle, ctypes.byref(chosen_guid), None, 0, False, None, ctypes.byref(bss_list_ptr))
     if result != 0:
         raise OSError(f"WlanGetNetworkBssList failed with error {result}")
 
-    bss_list = bss_list.ptr.contents
+    bss_list = bss_list_ptr.contents
     count = bss_list.dwNumberOfItems
 
-    print(f"Found {count} access proints: \n")
+    print(f"Found {count} access points: \n")
 
     for i in range(count):
         entry = bss_list.wlanBssEntries[i]
@@ -144,7 +144,7 @@ def scan(interface_guid=None):
 
         bssid = ":".join(f"{b:02x}" for b in entry.dot11Bssid)
         
-        rssid = entry.lRssi
+        rssi = entry.lRssi
         channel_khz = entry.ulChCenterFrequency
         ie_size = entry.ulIeSize
 
@@ -155,9 +155,9 @@ def scan(interface_guid=None):
         print(f"IE size: {ie_size} bytes")
         print("-" * 40)
 
-        wlanapi.WlanFreeMemory(bss_list_ptr)
-        wlanapi.WlanFreeMemory(interface_list)
-        WlanCloseHandle(client_handle, None)
+    wlanapi.WlanFreeMemory(bss_list_ptr)
+    wlanapi.WlanFreeMemory(interface_list)
+    WlanCloseHandle(client_handle, None)
 
-if __name__ == "__main__"
-    scan
+if __name__ == "__main__":
+    scan()
