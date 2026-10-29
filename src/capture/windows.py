@@ -1,7 +1,8 @@
 """
-Windows beacon capture for the evil-twin-detector
 
+Windows beacon capture for the evil-twin-detector
 Reads nearby access points and their raw beacon data through the Windows Native API (wlanapi.dll), called via ctypes
+
 """
 
 import time
@@ -193,7 +194,7 @@ def scan(interface_guid=None):
 
 if __name__ == "__main__":
     results = scan()
-    print(f"Found {len(results)} accesspoints:\n")
+    print(f"Found {len(results)} access points:\n")
     for ap in results:
         print(f"SSID:    {ap.ssid}")
         print(f"BSSID:   {ap.bssid}")
