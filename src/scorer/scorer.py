@@ -13,6 +13,11 @@ MICROSECONDS_PER_DAY = 86_400_000_000
 
 LA_BIT_POINTS = 10
 
+IE_RICHNESS_MAX_POINTS = 30
+
+SECURITY_POINTS = 15
+RSN_ELEMENT_ID = 48
+
 @dataclass
 class ScoreResult:
     trust_bssid: str
@@ -22,6 +27,8 @@ class ScoreResult:
     suspicion_b: int
     breakdown: dict = field(default_factory=dict)
 
+# Scoring Engine Funtion
+# Comparing the indentical SSID pair and return a result
 def score(ap_a, ap_b, ies_a, ies_b):
     suspicion_a = 0
     suspicion_b = 0
@@ -64,6 +71,7 @@ def score_tsf(ap_a, ap_b):
 
     return round(points), suspect.bssid
 
+# Software set first bit check
 def score_la_bit(ap_a, ap_b):
     bits = []
     for ap in (ap_a, ap_b):
@@ -76,4 +84,33 @@ def score_la_bit(ap_a, ap_b):
         return LA_BIT_POINTS, ap_a.bssid
     if b_set and not a_set:
         return LA_BIT_POINTS, ap_b.bssid
+    return 0, None
+
+# IE richeness
+def score_ie_richness(ap_a, ap_b, ies_a, ies_b):
+    count_a = len(ies_a)
+    count_b = len(ies_b)
+
+    if count_a == count_b:
+        return 0, None
+
+    richer = max(count_a, count_b)
+    sparser = min(count_a, count_b)
+
+    ratio = (richer - sparser) / richer
+    points = IE_RICHNESS_MAX_POINTS * (ratio ** 2)
+
+    suspect = ap_a.bssid if count_a < count_b else ap_b.bssid
+
+    return round(points), suspect
+
+# AP Security
+def score_security(ap_a, ap_b, ies_a, ies_b):
+    a_secured = any(ie.element_id == RSN_ELEMENT_ID for ie in ies_a)
+    b_secured = any(ie.element_id == RSN_ELEMENT_ID for ie in ies_b)
+
+    if a_secured and not b_secured:
+        return SECURITY_POINTS, ap_b.bssid
+    if b_secured and not a_secured:
+        return SECURITY_POINTS, ap_a.bssid
     return 0, None
