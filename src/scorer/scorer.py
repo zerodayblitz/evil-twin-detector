@@ -18,6 +18,7 @@ IE_RICHNESS_MAX_POINTS = 30
 SECURITY_POINTS = 15
 RSN_ELEMENT_ID = 48
 
+
 @dataclass
 class ScoreResult:
     trust_bssid: str
@@ -27,25 +28,36 @@ class ScoreResult:
     suspicion_b: int
     breakdown: dict = field(default_factory=dict)
 
-# Scoring Engine Funtion
-# Comparing the indentical SSID pair and return a result
+
+# Scoring Engine Function
+# Comparing the identical SSID pair and return a result
 def score(ap_a, ap_b, ies_a, ies_b):
     suspicion_a = 0
     suspicion_b = 0
     breakdown = {}
 
-    # TSF Signal
-    tsf_points, tsf_suspect = score_tsf(ap.a,ap.b)
-    if tsf_suspect == ap.a.bssid:
-        suspicion_a += tsf_points
-    else:
-        suspicion_b += tsf_points
-    breakdown["tsf"] = {"points": tsf_points, "against": tsf_suspect}
+    signals = {
+        "tsf": score_tsf(ap_a, ap_b),
+        "ie_richness": score_ie_richness(ap_a, ap_b, ies_a, ies_b),
+        "security": score_security(ap_a, ap_b, ies_a, ies_b),
+        "la_bit": score_la_bit(ap_a, ap_b),
+    }
+
+    for name, (points, suspect) in signals.items():
+        if suspect is None:
+            target = None
+        elif suspect == ap_a.bssid:
+            target = "a"
+            suspicion_a += points
+        else:
+            target = "b"
+            suspicion_b += points
+        breakdown[name] = {"points": points, "against": target}
 
     if suspicion_a > suspicion_b:
-        trust, avoid = ap_b.bssid, ap_a.bssid
+        trust, avoid = ap_b, ap_a
     else:
-        trust, avoid = ap_a.bssid, ap_b.bssid
+        trust, avoid = ap_a, ap_b
 
     gap = abs(suspicion_a - suspicion_b)
     confidence = min(gap, 100)
@@ -54,10 +66,11 @@ def score(ap_a, ap_b, ies_a, ies_b):
         trust_bssid=trust,
         avoid_bssid=avoid,
         confidence=confidence,
-        suspicion_a=suspicion_a
-        suspicion_b=suspicion_b
-        breakdown=breakdown
+        suspicion_a=suspicion_a,
+        suspicion_b=suspicion_b,
+        breakdown=breakdown,
     )
+
 
 # TSF Scoring
 def score_tsf(ap_a, ap_b):
@@ -67,18 +80,19 @@ def score_tsf(ap_a, ap_b):
     suspect = ap_a if ap_a.tsf < ap_b.tsf else ap_b
 
     ratio = min(gap_days / TSF_SATURATION_DAYS, 1.0)
-    points = TSF_MAX_POINTS * (ratio ** 2)
+    points = TSF_MAX_POINTS * (ratio**2)
 
     return round(points), suspect.bssid
+
 
 # Software set first bit check
 def score_la_bit(ap_a, ap_b):
     bits = []
     for ap in (ap_a, ap_b):
         first_byte = int(ap.bssid[0:2], 16)
-        bits.append((first_byte & 0b10) != 0)  # Is the result non zero 
-                                               # Non zero BSSI first bit = software set
-    a_set, b_set = bits 
+        bits.append((first_byte & 0b10) != 0)  # Is the result non zero
+        # Non zero BSSI first bit = software set
+    a_set, b_set = bits
 
     if a_set and not b_set:
         return LA_BIT_POINTS, ap_a.bssid
@@ -86,7 +100,8 @@ def score_la_bit(ap_a, ap_b):
         return LA_BIT_POINTS, ap_b.bssid
     return 0, None
 
-# IE richeness
+
+# IE richness
 def score_ie_richness(ap_a, ap_b, ies_a, ies_b):
     count_a = len(ies_a)
     count_b = len(ies_b)
@@ -98,11 +113,12 @@ def score_ie_richness(ap_a, ap_b, ies_a, ies_b):
     sparser = min(count_a, count_b)
 
     ratio = (richer - sparser) / richer
-    points = IE_RICHNESS_MAX_POINTS * (ratio ** 2)
+    points = IE_RICHNESS_MAX_POINTS * (ratio**2)
 
     suspect = ap_a.bssid if count_a < count_b else ap_b.bssid
 
     return round(points), suspect
+
 
 # AP Security
 def score_security(ap_a, ap_b, ies_a, ies_b):
