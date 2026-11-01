@@ -1,0 +1,13 @@
+[project]
+name = "evil-twin-detector"
+version = "1.0.0"
+
+[project.scripts]
+evil-twin-detector = "cli:main"
+
+[tool.setuptools]
+py-modules = ["cli"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
