@@ -63,8 +63,8 @@ def score(ap_a, ap_b, ies_a, ies_b):
     confidence = min(gap, 100)
 
     return ScoreResult(
-        trust_bssid=trust,
-        avoid_bssid=avoid,
+        trust_bssid=trust.bssid,
+        avoid_bssid=avoid.bssid,
         confidence=confidence,
         suspicion_a=suspicion_a,
         suspicion_b=suspicion_b,
