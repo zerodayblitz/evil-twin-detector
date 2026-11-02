@@ -1,12 +1,18 @@
 [project]
 name = "evil-twin-detector"
-version = "1.0.0"
+version = "1.0.1"
 
 [project.scripts]
 evil-twin-detector = "cli:main"
 
 [tool.setuptools]
 py-modules = ["cli"]
+packages = ["capture", "parser", "scorer"]
+
+[tool.setuptools.package-dir]
+capture = "src/capture"
+parser = "src/parser"
+scorer = "src/scorer"
 
 [build-system]
 requires = ["setuptools"]

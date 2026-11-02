@@ -1,7 +1,3 @@
-import sys
-
-sys.path.insert(0, "src")
-
 from capture.windows import scan
 from parser.ie_parser import parse_ies
 from scorer.scorer import score
@@ -42,7 +38,7 @@ def analyze(ap_a, ap_b):
 BANNER = r"""
 ⠀⠀⠀⠀⣠⣤⣶⣶⣶⣤⣄⡀⠀
 ⠀⠀⣴⣾⣿⣿⣿⣿⣿⣧⡀⠈⠢
-⠀⣼⣿⣿⣿⣿⣿⣿⣿⡿⠁⠀EVIL-TWIN DETECTOR⠀v 1.0.0
+⠀⣼⣿⣿⣿⣿⣿⣿⣿⡿⠁⠀EVIL-TWIN DETECTOR⠀v 1.0.1
 ⢰⡿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀Designed by @zerodayblitz⠀
 ⠘⣽⡿⠿⠿⣿⣿⣿⣿⣿⣦⣤⡀
 ⠀⣟⠀⠀⠀⣸⣿⡏⠀⠀⠀⢹⠗
